@@ -1,0 +1,61 @@
+---
+- hosts: test3
+  vars:
+    - root_password: '67a05e3822ce48a6386746388e6c81f5'
+    - remote_password: 'HASHED_PASSWORD'
+ 
+  tasks:
+  - name: Change root password
+    user:
+      name=root
+      password={{ root_password }}
+ 
+  - name: Add user rakesh
+    user:
+      name=rakesh
+      password={{ remote_password }}
+ 
+  - name: Add SSH public key to user rakesh
+    authorized_key:
+      user=rakesh
+      key="{{ lookup('file', "/home/rakesh/.ssh/id_rsa.pub") }}"
+ 
+  - name: Add rakesh user to sudoers
+    lineinfile:
+      "dest=/etc/sudoers
+      regexp='^rakesh ALL'
+      line='rakesh ALL=(ALL) NOPASSWD: ALL'
+      state=present"
+ 
+  - name: Disallow root SSH access
+    lineinfile:
+      dest=/etc/ssh/sshd_config
+      regexp="^PermitRootLogin"
+      line="PermitRootLogin no"
+      state=present
+    notify:
+      - restart sshd
+ 
+  - name: Disallow SSH password authentication
+    lineinfile:
+      dest=/etc/ssh/sshd_config
+      regexp="^PasswordAuthentication"
+      line="PasswordAuthentication no"
+      state=present
+    notify:
+      - restart sshd
+ 
+  - name: Disallow SSH GSS API authentication
+    lineinfile:
+      dest=/etc/ssh/sshd_config
+      regexp="^GSSAPIAuthentication"
+      line="GSSAPIAuthentication no"
+      state=present
+    notify:
+      - restart sshd
+
+  handlers:
+  - name: restart sshd
+    service: 
+      name=sshd
+      state=restarted
